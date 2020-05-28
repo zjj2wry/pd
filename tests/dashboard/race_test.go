@@ -19,6 +19,7 @@ import (
 
 	. "github.com/pingcap/check"
 
+	"github.com/pingcap/pd/v4/pkg/dashboard"
 	"github.com/pingcap/pd/v4/server"
 	"github.com/pingcap/pd/v4/tests"
 
@@ -32,26 +33,29 @@ type raceTestSuite struct{}
 
 func (s *raceTestSuite) SetUpSuite(c *C) {
 	server.EnableZap = true
+	dashboard.SetCheckInterval(50 * time.Millisecond)
+	tests.WaitLeaderReturnDelay = 0
+	tests.WaitLeaderCheckInterval = 20 * time.Millisecond
 }
 
 func (s *raceTestSuite) TearDownSuite(c *C) {
 	server.EnableZap = false
+	dashboard.SetCheckInterval(time.Second)
+	tests.WaitLeaderReturnDelay = 20 * time.Millisecond
+	tests.WaitLeaderCheckInterval = 500 * time.Millisecond
 }
 
 func (s *raceTestSuite) TestCancelDuringStarting(c *C) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	cluster, err := tests.NewTestCluster(ctx, 3)
+	cluster, err := tests.NewTestCluster(ctx, 1)
 	c.Assert(err, IsNil)
 	defer cluster.Destroy()
 	err = cluster.RunInitialServers()
 	c.Assert(err, IsNil)
-
-	ch := time.After(time.Second + 20*time.Millisecond)
-
 	cluster.WaitLeader()
 
-	<-ch
+	time.Sleep(70 * time.Millisecond)
 	cancel()
 }
