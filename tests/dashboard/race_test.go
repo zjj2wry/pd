@@ -56,6 +56,6 @@ func (s *raceTestSuite) TestCancelDuringStarting(c *C) {
 	c.Assert(err, IsNil)
 	cluster.WaitLeader()
 
-	time.Sleep(70 * time.Millisecond)
+	time.Sleep(60 * time.Millisecond)
 	cancel()
 }
