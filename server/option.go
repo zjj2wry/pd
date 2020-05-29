@@ -220,6 +220,11 @@ func (o *scheduleOption) IsNamespaceRelocationEnabled() bool {
 	return !o.load().DisableNamespaceRelocation
 }
 
+// GetLeaderSchedulePolicy is to get leader schedule policy.
+func (o *scheduleOption) GetLeaderSchedulePolicy() core.SchedulePolicy {
+	return o.load().GetLeaderSchedulePolicy()
+}
+
 func (o *scheduleOption) GetSchedulers() SchedulerConfigs {
 	return o.load().Schedulers
 }

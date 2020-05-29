@@ -835,6 +835,11 @@ func (c *clusterInfo) IsReplaceOfflineReplicaEnabled() bool {
 	return c.opt.IsReplaceOfflineReplicaEnabled()
 }
 
+// GetLeaderSchedulePolicy is to get leader schedule policy
+func (c *clusterInfo) GetLeaderSchedulePolicy() core.SchedulePolicy {
+	return c.opt.GetLeaderSchedulePolicy()
+}
+
 func (c *clusterInfo) IsMakeUpReplicaEnabled() bool {
 	return c.opt.IsMakeUpReplicaEnabled()
 }

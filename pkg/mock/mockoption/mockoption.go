@@ -17,6 +17,7 @@ import (
 	"time"
 
 	"github.com/pingcap/kvproto/pkg/metapb"
+	"github.com/pingcap/pd/v3/server/core"
 )
 
 const (
@@ -39,6 +40,7 @@ const (
 	defaultSchedulerMaxWaitingOperator = 3
 	defaultHotRegionCacheHitsThreshold = 3
 	defaultStrictlyMatchLabel          = true
+	defaultLeaderSchedulePolicy        = "size"
 )
 
 // ScheduleOptions is a mock of ScheduleOptions
@@ -72,6 +74,7 @@ type ScheduleOptions struct {
 	DisableRemoveExtraReplica    bool
 	DisableLocationReplacement   bool
 	DisableNamespaceRelocation   bool
+	LeaderSchedulePolicy         string
 	LabelProperties              map[string][]*metapb.StoreLabel
 }
 
@@ -97,6 +100,7 @@ func NewScheduleOptions() *ScheduleOptions {
 	mso.TolerantSizeRatio = defaultTolerantSizeRatio
 	mso.LowSpaceRatio = defaultLowSpaceRatio
 	mso.HighSpaceRatio = defaultHighSpaceRatio
+	mso.LeaderSchedulePolicy = defaultLeaderSchedulePolicy
 	return mso
 }
 
@@ -243,4 +247,9 @@ func (mso *ScheduleOptions) IsLocationReplacementEnabled() bool {
 // IsNamespaceRelocationEnabled mocks method.
 func (mso *ScheduleOptions) IsNamespaceRelocationEnabled() bool {
 	return !mso.DisableNamespaceRelocation
+}
+
+// GetLeaderSchedulePolicy is to get leader schedule policy
+func (mso *ScheduleOptions) GetLeaderSchedulePolicy() core.SchedulePolicy {
+	return core.StringToSchedulePolicy(mso.LeaderSchedulePolicy)
 }

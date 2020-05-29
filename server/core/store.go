@@ -251,9 +251,16 @@ func (s *StoreInfo) GetLastHeartbeatTS() time.Time {
 const minWeight = 1e-6
 const maxScore = 1024 * 1024 * 1024
 
-// LeaderScore returns the store's leader score: leaderSize / leaderWeight.
-func (s *StoreInfo) LeaderScore(delta int64) float64 {
-	return float64(s.GetLeaderSize()+delta) / math.Max(s.GetLeaderWeight(), minWeight)
+// LeaderScore returns the store's leader score.
+func (s *StoreInfo) LeaderScore(policy SchedulePolicy, delta int64) float64 {
+	switch policy {
+	case BySize:
+		return float64(s.GetLeaderSize()+delta) / math.Max(s.GetLeaderWeight(), minWeight)
+	case ByCount:
+		return float64(int64(s.GetLeaderCount())+delta) / math.Max(s.GetLeaderWeight(), minWeight)
+	default:
+		return 0
+	}
 }
 
 // RegionScore returns the store's region score.
@@ -320,7 +327,7 @@ func (s *StoreInfo) IsLowSpace(lowSpaceRatio float64) bool {
 	return s.GetStoreStats() != nil && s.AvailableRatio() < 1-lowSpaceRatio
 }
 
-// ResourceCount reutrns count of leader/region in the store.
+// ResourceCount returns count of leader/region in the store.
 func (s *StoreInfo) ResourceCount(kind ResourceKind) uint64 {
 	switch kind {
 	case LeaderKind:
@@ -344,11 +351,11 @@ func (s *StoreInfo) ResourceSize(kind ResourceKind) int64 {
 	}
 }
 
-// ResourceScore reutrns score of leader/region in the store.
-func (s *StoreInfo) ResourceScore(kind ResourceKind, highSpaceRatio, lowSpaceRatio float64, delta int64) float64 {
-	switch kind {
+// ResourceScore returns score of leader/region in the store.
+func (s *StoreInfo) ResourceScore(scheduleKind ScheduleKind, highSpaceRatio, lowSpaceRatio float64, delta int64) float64 {
+	switch scheduleKind.Resource {
 	case LeaderKind:
-		return s.LeaderScore(delta)
+		return s.LeaderScore(scheduleKind.Policy, delta)
 	case RegionKind:
 		return s.RegionScore(highSpaceRatio, lowSpaceRatio, delta)
 	default:

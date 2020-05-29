@@ -23,12 +23,26 @@ const (
 	HighPriority
 )
 
+// ScheduleKind distinguishes resources and schedule policy.
+type ScheduleKind struct {
+	Resource ResourceKind
+	Policy   SchedulePolicy
+}
+
+// NewScheduleKind creates a schedule kind with resource kind and schedule policy.
+func NewScheduleKind(Resource ResourceKind, Policy SchedulePolicy) ScheduleKind {
+	return ScheduleKind{
+		Resource: Resource,
+		Policy:   Policy,
+	}
+}
+
 // ResourceKind distinguishes different kinds of resources.
 type ResourceKind int
 
 const (
 	// LeaderKind indicates the leader kind resource
-	LeaderKind = iota
+	LeaderKind ResourceKind = iota
 	// RegionKind indicates the region kind resource
 	RegionKind
 )
@@ -41,5 +55,38 @@ func (k ResourceKind) String() string {
 		return "region"
 	default:
 		return "unknown"
+	}
+}
+
+// SchedulePolicy distinguishes different kinds of schedule policy
+type SchedulePolicy int
+
+const (
+	// ByCount indicates that balance by count
+	ByCount SchedulePolicy = iota
+	// BySize indicates that balance by size
+	BySize
+)
+
+func (k SchedulePolicy) String() string {
+	switch k {
+	case ByCount:
+		return "count"
+	case BySize:
+		return "size"
+	default:
+		return "unknown"
+	}
+}
+
+// StringToSchedulePolicy creates a schedule policy with string.
+func StringToSchedulePolicy(input string) SchedulePolicy {
+	switch input {
+	case BySize.String():
+		return BySize
+	case ByCount.String():
+		return ByCount
+	default:
+		panic("invalid schedule policy: " + input)
 	}
 }
