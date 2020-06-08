@@ -1722,3 +1722,19 @@ func GetMembers(etcdClient *clientv3.Client) ([]*pdpb.Member, error) {
 
 	return members, nil
 }
+
+// IsClientURL returns whether addr is a ClientUrl of any member.
+func IsClientURL(addr string, etcdClient *clientv3.Client) bool {
+	members, err := GetMembers(etcdClient)
+	if err != nil {
+		return false
+	}
+	for _, member := range members {
+		for _, u := range member.GetClientUrls() {
+			if u == addr {
+				return true
+			}
+		}
+	}
+	return false
+}
