@@ -182,12 +182,13 @@ type testBalanceLeaderSchedulerSuite struct {
 	tc     *mockcluster.Cluster
 	lb     schedule.Scheduler
 	oc     *schedule.OperatorController
+	opt    *mockoption.ScheduleOptions
 }
 
 func (s *testBalanceLeaderSchedulerSuite) SetUpTest(c *C) {
 	s.ctx, s.cancel = context.WithCancel(context.Background())
-	opt := mockoption.NewScheduleOptions()
-	s.tc = mockcluster.NewCluster(opt)
+	s.opt = mockoption.NewScheduleOptions()
+	s.tc = mockcluster.NewCluster(s.opt)
 	s.oc = schedule.NewOperatorController(s.ctx, nil, nil)
 	lb, err := schedule.CreateScheduler(BalanceLeaderType, s.oc, core.NewStorage(kv.NewMemoryKV()), schedule.ConfigSliceDecoder(BalanceLeaderType, []string{"", ""}))
 	c.Assert(err, IsNil)
@@ -302,6 +303,44 @@ func (s *testBalanceLeaderSchedulerSuite) TestScheduleWithOpInfluence(c *C) {
 	s.tc.UpdateLeaderCount(4, 13)
 	s.tc.AddLeaderRegion(1, 4, 1, 2, 3)
 	c.Check(s.schedule(), IsNil)
+}
+
+func (s *testBalanceLeaderSchedulerSuite) TestTransferLeaderOut(c *C) {
+	// Stores:     1    2    3    4
+	// Leaders:    7    8    9   12
+	s.tc.AddLeaderStore(1, 7)
+	s.tc.AddLeaderStore(2, 8)
+	s.tc.AddLeaderStore(3, 9)
+	s.tc.AddLeaderStore(4, 12)
+	s.opt.TolerantSizeRatio = 0.1
+	for i := uint64(1); i <= 7; i++ {
+		s.tc.AddLeaderRegion(i, 4, 1, 2, 3)
+	}
+
+	// balance leader: 4->1, 4->1, 4->2
+	regions := make(map[uint64]struct{})
+	targets := map[uint64]uint64{
+		1: 2,
+		2: 1,
+	}
+	for i := 0; i < 20; i++ {
+		if len(s.schedule()) == 0 {
+			continue
+		}
+		if op := s.schedule()[0]; op != nil {
+			if _, ok := regions[op.RegionID()]; !ok {
+				s.oc.SetOperator(op)
+				regions[op.RegionID()] = struct{}{}
+				tr := op.Step(0).(operator.TransferLeader)
+				c.Assert(tr.FromStore, Equals, uint64(4))
+				targets[tr.ToStore]--
+			}
+		}
+	}
+	c.Assert(regions, HasLen, 3)
+	for _, count := range targets {
+		c.Assert(count, Equals, uint64(0))
+	}
 }
 
 func (s *testBalanceLeaderSchedulerSuite) TestBalanceFilter(c *C) {
