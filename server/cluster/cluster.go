@@ -1009,14 +1009,16 @@ func (c *RaftCluster) BuryStore(storeID uint64, force bool) error {
 	return err
 }
 
-// BlockStore stops balancer from selecting the store.
-func (c *RaftCluster) BlockStore(storeID uint64) error {
-	return c.core.BlockStore(storeID)
+// PauseLeaderTransfer prevents the store from been selected as source or
+// target store of TransferLeader.
+func (c *RaftCluster) PauseLeaderTransfer(storeID uint64) error {
+	return c.core.PauseLeaderTransfer(storeID)
 }
 
-// UnblockStore allows balancer to select the store.
-func (c *RaftCluster) UnblockStore(storeID uint64) {
-	c.core.UnblockStore(storeID)
+// ResumeLeaderTransfer cleans a store's pause state. The store can be selected
+// as source or target of TransferLeader again.
+func (c *RaftCluster) ResumeLeaderTransfer(storeID uint64) {
+	c.core.ResumeLeaderTransfer(storeID)
 }
 
 // AttachAvailableFunc attaches an available function to a specific store.
