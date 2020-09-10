@@ -62,12 +62,22 @@ func calculate(rc *cluster.RaftCluster, cfg *config.PDServerConfig, strategy *St
 	}
 	querier := NewPrometheusQuerier(client)
 
-	if tikvPlans := getPlans(rc, querier, strategy, TiKV); tikvPlans != nil {
-		plans = append(plans, tikvPlans...)
+	components := map[ComponentType]struct{}{}
+	for _, rule := range strategy.Rules {
+		switch rule.Component {
+		case "tidb":
+			components[TiDB] = struct{}{}
+		case "tikv":
+			components[TiKV] = struct{}{}
+		}
 	}
-	if tidbPlans := getPlans(rc, querier, strategy, TiDB); tidbPlans != nil {
-		plans = append(plans, tidbPlans...)
+
+	for comp := range components {
+		if compPlans := getPlans(rc, querier, strategy, comp); compPlans != nil {
+			plans = append(plans, compPlans...)
+		}
 	}
+
 	return plans
 }
 
@@ -91,7 +101,7 @@ func getPlans(rc *cluster.RaftCluster, querier Querier, strategy *Strategy, comp
 	}
 
 	currentQuota, err := getTotalCPUQuota(querier, component, instances, now)
-	if err != nil {
+	if err != nil || currentQuota == 0 {
 		log.Error("cannot get total CPU quota", errs.ZapError(err))
 		return nil
 	}
@@ -217,6 +227,10 @@ func calculateScaleOutPlan(rc *cluster.RaftCluster, strategy *Strategy, componen
 	group := findBestGroupToScaleOut(rc, strategy, scaleOutQuota, groups, component)
 
 	resCPU := float64(getCPUByResourceType(strategy, group.ResourceType))
+	if math.Abs(resCPU) <= 1e-6 {
+		log.Error("resource CPU is zero, exiting calculation")
+		return nil
+	}
 	resCount := getCountByResourceType(strategy, group.ResourceType)
 	scaleOutCount := typeutil.MinUint64(uint64(math.Ceil(scaleOutQuota/resCPU)), MaxScaleOutStep)
 
@@ -245,6 +259,10 @@ func calculateScaleInPlan(rc *cluster.RaftCluster, strategy *Strategy, component
 	}
 	group := findBestGroupToScaleIn(rc, strategy, scaleInQuota, groups)
 	resCPU := float64(getCPUByResourceType(strategy, group.ResourceType))
+	if math.Abs(resCPU) <= 1e-6 {
+		log.Error("resource CPU is zero, exiting calculation")
+		return nil
+	}
 	scaleInCount := typeutil.MinUint64(uint64(math.Ceil(scaleInQuota/resCPU)), MaxScaleInStep)
 	for i, g := range groups {
 		if g.ResourceType == group.ResourceType {
